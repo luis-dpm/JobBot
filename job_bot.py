@@ -48,7 +48,8 @@ MAX_DAYS_OLD = 7
 # Resumen de tu perfil — esto es lo que Claude usa para evaluar el match.
 # Edítalo cuando actualices tu CV.
 CV_SUMMARY = """
-Luis de Pedro - Financial Analyst con 5+ años de experiencia.
+Luis de Pedro - Financial Analyst con 5+ años de experiencia. Vive en Lugano, Suiza
+(o tiene intención de instalarse allí de forma permanente).
 
 EXPERIENCIA:
 - Financial Management Analyst, Acciona (España, 2024-presente): análisis financiero
@@ -67,11 +68,13 @@ EXPERIENCIA:
 EDUCACIÓN: MBA International Management (ICEX-CECO), BA Psicología (UOC),
 BA Business Management (UAM).
 
-IDIOMAS: Español (nativo), Inglés (C1).
+IDIOMAS: Español (nativo), Inglés (C1), Italiano (nivel básico — un asset
+para el Ticino, pero NO suficiente para un puesto que exija italiano fluido
+como requisito de trabajo diario). Alemán y francés: ninguno.
 
 OBJETIVO: roles de analista (financiero, M&A, relaciones internacionales con
-enfoque analítico) en Lugano, Suiza. El italiano NO es un idioma que domine
-actualmente — es un área de mejora, no asumir que lo habla.
+enfoque analítico) con base en Lugano o que permitan vivir en Lugano con
+desplazamientos puntuales (1-2 días/semana) a otra ciudad suiza.
 
 ADICIONAL: si una oferta está en cualquier otra parte de Suiza (no solo
 Lugano) pero requiere o valora el español como idioma de trabajo, también
@@ -79,6 +82,18 @@ es de interés — está abierto a mudarse dentro de Suiza para un puesto así.
 Lugano es la ubicación preferida, pero cualquier ciudad suiza (Zúrich,
 Basilea, Ginebra, Berna, etc.) es aceptable si el puesto encaja bien con
 el perfil.
+
+NIVEL/SENIORITY: candidato con 5+ años de experiencia, perfil individual
+contributor (analista). Aunque tiene experiencia sólida, está entrando en un
+mercado nuevo (Suiza) y nunca ha trabajado en un entorno 100% en inglés, así
+que SÍ está abierto a puestos junior/entry-level como forma de entrar en el
+mercado suizo — no descartar estos. Lo único que NO encaja es dirección/
+C-level (Head of, Director, VP, Chief, etc.) por ser claramente un salto de
+seniority hacia arriba, no hacia abajo. El núcleo de su experiencia es
+financiero/M&A/trade — un "analyst" genérico que no tenga relación con
+finanzas, M&A, inversión, trade o desarrollo de negocio (ej. data analyst,
+marketing analyst, HR analyst sin componente financiero) NO es un buen
+match aunque el título contenga la palabra "analyst".
 """
 
 # Email de destino y remitente (mismo Gmail en ambos campos normalmente)
@@ -201,18 +216,45 @@ def evaluate_jobs_with_claude(jobs):
         jobs_text += f"\n---\n[{i}] {title} | {company} | {location}\n{description}\n"
 
     prompt = f"""Eres un reclutador senior. Aquí tienes el perfil de un candidato y una
-lista de ofertas de empleo numeradas. Para cada oferta, evalúa el match con el perfil
-en una escala de 0-10, y si es 6 o más, escribe un motivo breve (1 frase) de por qué
-encaja y qué destacar al aplicar.
+lista de ofertas de empleo numeradas. Para cada oferta, evalúa el match en una escala
+de 0-10 y extrae información clave.
 
 PERFIL DEL CANDIDATO:
 {CV_SUMMARY}
+
+REGLAS DE FILTRADO IMPORTANTES:
+- Si la oferta EXIGE alemán o francés como idioma de trabajo obligatorio (no solo
+  "valorable" o "nice to have"), pon el score en 0-2 sin importar lo demás, ya que
+  el candidato no cumple ese requisito excluyente.
+- Si el idioma de trabajo es inglés, sube el score. Si además piden o valoran
+  español, es un plus claro. El italiano básico del candidato es un asset positivo
+  pero no sustituye un requisito de italiano fluido obligatorio.
+- Si el puesto es 100% presencial en una ciudad lejos de Lugano sin ninguna
+  flexibilidad mencionada, resta puntos (el candidato quiere vivir en Lugano y
+  desplazarse como mucho 1-2 días/semana a otra oficina).
+- Si es remoto o híbrido, súmalos.
+- Si el título es "analyst" pero el contenido real no tiene relación con finanzas,
+  M&A, inversión, trade internacional o desarrollo de negocio, baja el score
+  considerablemente (es ruido, no un match real).
+- Si el puesto es claramente de dirección/C-level (Head of, Director, VP, Chief,
+  etc.), baja mucho el score. Los puestos junior/entry-level SÍ son aceptables,
+  no los penalices por ser junior.
 
 OFERTAS:
 {jobs_text}
 
 Responde ÚNICAMENTE con un JSON (sin texto adicional, sin markdown) con este formato:
-{{"results": [{{"index": 0, "score": 8, "reason": "..."}}, ...]}}
+{{"results": [
+  {{
+    "index": 0,
+    "score": 8,
+    "reason": "frase breve de por qué encaja y qué destacar al aplicar",
+    "match_highlight": "la 'luz verde' concreta: qué experiencia/skill específico del CV (ej. 'modelos financieros DCF en Powen Solar' o 'due diligence M&A') conecta directamente con un requisito específico de ESTA oferta",
+    "remote_policy": "100% remoto / Híbrido (X días oficina) / Presencial / No especificado",
+    "salary_benefits": "resumen breve de lo que mencionen sobre salario, seguro médico, comidas, etc., o 'No especificado' si no dicen nada",
+    "languages": "idiomas requeridos/valorados según el anuncio, indicando cuáles son obligatorios"
+  }}, ...
+]}}
 
 Incluye en el JSON solo las ofertas con score >= 6. Si ninguna llega a 6, devuelve
 {{"results": []}}.
@@ -227,7 +269,7 @@ Incluye en el JSON solo las ofertas con score >= 6. Si ninguna llega a 6, devuel
         },
         json={
             "model": "claude-sonnet-4-6",
-            "max_tokens": 2000,
+            "max_tokens": 4000,
             "messages": [{"role": "user", "content": prompt}],
         },
         timeout=60,
@@ -257,6 +299,10 @@ Incluye en el JSON solo las ofertas con score >= 6. Si ninguna llega a 6, devuel
             "url": job.get("redirect_url", ""),
             "score": r.get("score", 0),
             "reason": r.get("reason", ""),
+            "match_highlight": r.get("match_highlight", ""),
+            "remote_policy": r.get("remote_policy", "No especificado"),
+            "salary_benefits": r.get("salary_benefits", "No especificado"),
+            "languages": r.get("languages", "No especificado"),
         })
 
     scored_jobs.sort(key=lambda j: j["score"], reverse=True)
@@ -280,6 +326,14 @@ def build_email_html(scored_jobs):
                 <h3 style="margin:0 0 5px 0;">{j['title']} — {j['company']}</h3>
                 <p style="margin:0 0 5px 0;color:#666;">{j['location']} · Match: {j['score']}/10</p>
                 <p style="margin:0 0 10px 0;">{j['reason']}</p>
+                <p style="margin:0 0 10px 0;padding:8px;background:#f0f7ff;border-left:3px solid #0066cc;font-size:13px;">
+                    <strong>✅ Luz verde:</strong> {j['match_highlight']}
+                </p>
+                <table style="font-size:13px;color:#444;margin-bottom:10px;">
+                    <tr><td style="padding:2px 8px 2px 0;font-weight:bold;">🏠 Teletrabajo:</td><td>{j['remote_policy']}</td></tr>
+                    <tr><td style="padding:2px 8px 2px 0;font-weight:bold;">💰 Salario/beneficios:</td><td>{j['salary_benefits']}</td></tr>
+                    <tr><td style="padding:2px 8px 2px 0;font-weight:bold;">🗣️ Idiomas:</td><td>{j['languages']}</td></tr>
+                </table>
                 <a href="{j['url']}" style="color:#0066cc;">Ver oferta y aplicar →</a>
             </div>
             """
