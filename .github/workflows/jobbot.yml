@@ -1,0 +1,33 @@
+name: JobBot Daily Run
+
+on:
+  schedule:
+    # 17:00 UTC = 19:00 en Madrid en horario de verano (CEST, abr-oct)
+    # 18:00 en horario de invierno (CET, oct-mar). Ajusta si quieres precisión exacta.
+    - cron: "0 17 * * *"
+  workflow_dispatch: {}  # te permite lanzarlo manualmente desde GitHub para probar
+
+jobs:
+  run-jobbot:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run JobBot
+        env:
+          ADZUNA_APP_ID: ${{ secrets.ADZUNA_APP_ID }}
+          ADZUNA_APP_KEY: ${{ secrets.ADZUNA_APP_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GMAIL_ADDRESS: ${{ secrets.GMAIL_ADDRESS }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          EMAIL_TO: ${{ secrets.EMAIL_TO }}
+        run: python job_bot.py
