@@ -167,7 +167,7 @@ def fetch_jsearch_jobs():
     return jobs
 
 
-
+def filter_by_location(jobs):
     """Nos quedamos solo con ofertas cuya ubicación mencione Lugano/Ticino/Suiza."""
     filtered = []
     for job in jobs:
