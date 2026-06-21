@@ -27,7 +27,6 @@ SEARCH_TERMS = [
     "trade finance",
     "credit analyst",
     "strategy analyst",
-    "controller",
     "financial planning analyst",
 ]
 
@@ -37,13 +36,13 @@ ADZUNA_COUNTRY = "ch"
 LOCATION_KEYWORDS = ["Lugano", "Ticino", "Switzerland", "Svizzera"]
 
 # Cuántos resultados pedir como máximo por término de búsqueda
-RESULTS_PER_SEARCH = 20
+RESULTS_PER_SEARCH = 30
 
 # Días hacia atrás desde hoy para considerar una oferta "nueva".
 # La primera vez conviene una ventana más amplia (7 días) para no
 # arrancar con la bandeja vacía; luego se puede bajar a 2-3 días
 # para que el bot solo te avise de lo realmente nuevo cada día.
-MAX_DAYS_OLD = 7
+MAX_DAYS_OLD = 14
 
 # Resumen de tu perfil — esto es lo que Claude usa para evaluar el match.
 # Edítalo cuando actualices tu CV.
@@ -72,6 +71,13 @@ IDIOMAS: Español (nativo), Inglés (C1).
 OBJETIVO: roles de analista (financiero, M&A, relaciones internacionales con
 enfoque analítico) en Lugano, Suiza. El italiano NO es un idioma que domine
 actualmente — es un área de mejora, no asumir que lo habla.
+
+ADICIONAL: si una oferta está en cualquier otra parte de Suiza (no solo
+Lugano) pero requiere o valora el español como idioma de trabajo, también
+es de interés — está abierto a mudarse dentro de Suiza para un puesto así.
+Lugano es la ubicación preferida, pero cualquier ciudad suiza (Zúrich,
+Basilea, Ginebra, Berna, etc.) es aceptable si el puesto encaja bien con
+el perfil.
 """
 
 # Email de destino y remitente (mismo Gmail en ambos campos normalmente)
@@ -168,13 +174,12 @@ def fetch_jsearch_jobs():
 
 
 def filter_by_location(jobs):
-    """Nos quedamos solo con ofertas cuya ubicación mencione Lugano/Ticino/Suiza."""
-    filtered = []
-    for job in jobs:
-        location = job.get("location", {}).get("display_name", "")
-        if any(kw.lower() in location.lower() for kw in LOCATION_KEYWORDS):
-            filtered.append(job)
-    return filtered
+    """Ya no restringimos por ciudad: Adzuna está configurado con país=Suiza
+    (ADZUNA_COUNTRY) así que cualquier oferta que llegue aquí ya es de Suiza.
+    Dejamos pasar todo (Lugano, Zúrich, Basilea, Ginebra...) y es Claude quien,
+    en el siguiente paso, valora el match real con el perfil — incluyendo
+    bonus si requiere español o si está cerca de Lugano."""
+    return jobs
 
 
 # ----------------------------------------------------------------------
