@@ -27,6 +27,7 @@ SEARCH_TERMS = [
     "trade finance",
     "credit analyst",
     "strategy analyst",
+    "controller",
     "financial planning analyst",
 ]
 
@@ -42,7 +43,7 @@ RESULTS_PER_SEARCH = 30
 # La primera vez conviene una ventana más amplia (7 días) para no
 # arrancar con la bandeja vacía; luego se puede bajar a 2-3 días
 # para que el bot solo te avise de lo realmente nuevo cada día.
-MAX_DAYS_OLD = 14
+MAX_DAYS_OLD = 7
 
 # Resumen de tu perfil — esto es lo que Claude usa para evaluar el match.
 # Edítalo cuando actualices tu CV.
