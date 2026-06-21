@@ -18,9 +18,17 @@ from datetime import datetime, timedelta
 # Términos de búsqueda (uno o varios, se combinan resultados)
 SEARCH_TERMS = [
     "financial analyst",
+    "analyst",
     "M&A analyst",
     "investment analyst",
-    "international relations analyst",
+    "business development",
+    "international trade",
+    "business administration",
+    "trade finance",
+    "credit analyst",
+    "strategy analyst",
+    "controller",
+    "financial planning analyst",
 ]
 
 # Adzuna usa códigos de país. Suiza = "ch". Si no encuentra suficientes
@@ -30,6 +38,12 @@ LOCATION_KEYWORDS = ["Lugano", "Ticino", "Switzerland", "Svizzera"]
 
 # Cuántos resultados pedir como máximo por término de búsqueda
 RESULTS_PER_SEARCH = 20
+
+# Días hacia atrás desde hoy para considerar una oferta "nueva".
+# La primera vez conviene una ventana más amplia (7 días) para no
+# arrancar con la bandeja vacía; luego se puede bajar a 2-3 días
+# para que el bot solo te avise de lo realmente nuevo cada día.
+MAX_DAYS_OLD = 7
 
 # Resumen de tu perfil — esto es lo que Claude usa para evaluar el match.
 # Edítalo cuando actualices tu CV.
@@ -84,7 +98,7 @@ def fetch_adzuna_jobs():
             "app_key": ADZUNA_APP_KEY,
             "results_per_page": RESULTS_PER_SEARCH,
             "what": term,
-            "max_days_old": 2,  # ofertas recientes (cubre el día y margen)
+            "max_days_old": MAX_DAYS_OLD,  # ofertas recientes (ventana ajustable arriba)
             "content-type": "application/json",
         }
         try:
