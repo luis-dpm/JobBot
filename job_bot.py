@@ -82,6 +82,7 @@ GMAIL_APP_PASSWORD = os.environ["GMAIL_APP_PASSWORD"]
 ADZUNA_APP_ID = os.environ["ADZUNA_APP_ID"]
 ADZUNA_APP_KEY = os.environ["ADZUNA_APP_KEY"]
 ANTHROPIC_API_KEY = os.environ["ANTHROPIC_API_KEY"]
+RAPIDAPI_KEY = os.environ.get("RAPIDAPI_KEY")  # opcional, para JSearch (LinkedIn/Indeed/Glassdoor)
 
 # ----------------------------------------------------------------------
 # 1. BUSCAR OFERTAS EN ADZUNA
@@ -119,7 +120,54 @@ def fetch_adzuna_jobs():
     return all_jobs
 
 
-def filter_by_location(jobs):
+def fetch_jsearch_jobs():
+    """JSearch agrega resultados de Google for Jobs, que SÍ incluye ofertas
+    originalmente publicadas en LinkedIn, Indeed, Glassdoor y webs de empresas.
+    Requiere RAPIDAPI_KEY (gratis hasta 200 consultas/mes)."""
+    if not RAPIDAPI_KEY:
+        print("  (RAPIDAPI_KEY no configurada, se omite JSearch)")
+        return []
+
+    jobs = []
+    headers = {
+        "X-RapidAPI-Key": RAPIDAPI_KEY,
+        "X-RapidAPI-Host": "jsearch.p.rapidapi.com",
+    }
+
+    for term in SEARCH_TERMS:
+        query = f"{term} in Lugano, Switzerland"
+        try:
+            resp = requests.get(
+                "https://jsearch.p.rapidapi.com/search",
+                headers=headers,
+                params={
+                    "query": query,
+                    "num_pages": "1",
+                    "date_posted": "week" if MAX_DAYS_OLD > 3 else "3days",
+                },
+                timeout=30,
+            )
+            resp.raise_for_status()
+            data = resp.json()
+        except Exception as e:
+            print(f"Error en JSearch buscando '{term}': {e}")
+            continue
+
+        for job in data.get("data", []):
+            jobs.append({
+                "id": job.get("job_id"),
+                "title": job.get("job_title", ""),
+                "company": {"display_name": job.get("employer_name", "")},
+                "location": {"display_name": f"{job.get('job_city', '')}, {job.get('job_country', '')}".strip(", ")},
+                "description": job.get("job_description", "") or "",
+                "redirect_url": job.get("job_apply_link", ""),
+                "source": job.get("job_publisher", ""),  # ej. "LinkedIn", "Indeed", "Glassdoor"
+            })
+
+    return jobs
+
+
+
     """Nos quedamos solo con ofertas cuya ubicación mencione Lugano/Ticino/Suiza."""
     filtered = []
     for job in jobs:
@@ -261,8 +309,15 @@ def send_email(html_content, num_jobs):
 
 def main():
     print("Buscando ofertas en Adzuna...")
-    jobs = fetch_adzuna_jobs()
-    print(f"  {len(jobs)} ofertas encontradas en total")
+    adzuna_jobs = fetch_adzuna_jobs()
+    print(f"  {len(adzuna_jobs)} ofertas encontradas en Adzuna")
+
+    print("Buscando ofertas en JSearch (LinkedIn/Indeed/Glassdoor)...")
+    jsearch_jobs = fetch_jsearch_jobs()
+    print(f"  {len(jsearch_jobs)} ofertas encontradas en JSearch")
+
+    jobs = adzuna_jobs + jsearch_jobs
+    print(f"  {len(jobs)} ofertas en total (combinadas)")
 
     jobs = filter_by_location(jobs)
     print(f"  {len(jobs)} ofertas tras filtrar por ubicación")
